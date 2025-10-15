@@ -5,12 +5,13 @@ import com.desafionimble.model.cobranca.CobrancaDTO;
 import com.desafionimble.model.user.User;
 import com.desafionimble.repository.CobrancaRepository;
 import com.desafionimble.repository.UserRepository;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 public class CobrancaService {
@@ -39,72 +40,32 @@ public class CobrancaService {
         return cobrancaDTO;
     }
 
-    public List<CobrancaDTO> findReceive(String cpf, int status){
-        Optional<User> user = userRepository.findUserByCPf(cpf);
-        if(status == 1) {
-            List<Cobranca> cobrancas = cobrancaRepository.findAllByStatusAndCpfDestiny("PENDENTE", cpf);
-            List<CobrancaDTO> cobrancasDTO = new ArrayList<>();
-            for (int i = 0; i <= cobrancas.size(); i++) {
-                Cobranca cobranca = cobrancas.get(i);
-                cobrancasDTO.add(toDto(cobranca));
-            }
-            return cobrancasDTO;
-        } else if (status == 2) {
-            List<Cobranca> cobrancas = cobrancaRepository.findAllByStatusAndCpfDestiny("PAGO", cpf);
-            List<CobrancaDTO> cobrancasDTO = new ArrayList<>();
-            for (int i = 0; i <= cobrancas.size(); i++) {
-                Cobranca cobranca = cobrancas.get(i);
-                cobrancasDTO.add(toDto(cobranca));
-            }
-            return cobrancasDTO;
-        } else if (status == 3) {
-            List<Cobranca> cobrancas = cobrancaRepository.findAllByStatusAndCpfDestiny("CANCELADO", cpf);
-            List<CobrancaDTO> cobrancasDTO = new ArrayList<>();
-            for (int i = 0; i <= cobrancas.size(); i++) {
-                Cobranca cobranca = cobrancas.get(i);
-                cobrancasDTO.add(toDto(cobranca));
-            }
-            return cobrancasDTO;
-        }
-        return new ArrayList<CobrancaDTO>();
+    public List<CobrancaDTO> findReceive(String cpf, int statusId){
+        String status = getStatusById(statusId);
+        List<Cobranca> cobrancas = cobrancaRepository.findAllByStatusAndCpfDestiny(status, cpf);
+
+        return cobrancas.stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 
-    public List<CobrancaDTO> findSend(String cpf, int status){
-        Optional<User> user = userRepository.findUserByCPf(cpf);
-        if(status == 1) {
-            List<Cobranca> cobrancas = cobrancaRepository.findAllByStatusAndDevedor("PENDENTE", user.orElseThrow());
-            List<CobrancaDTO> cobrancasDTO = new ArrayList<>();
-            for (int i = 0; i <= cobrancas.size(); i++) {
-                Cobranca cobranca = cobrancas.get(i);
-                cobrancasDTO.add(toDto(cobranca));
-            }
-            return cobrancasDTO;
-        } else if (status == 2) {
-            List<Cobranca> cobrancas = cobrancaRepository.findAllByStatusAndDevedor("PAGO", user.orElseThrow());
-            List<CobrancaDTO> cobrancasDTO = new ArrayList<>();
-            for (int i = 0; i <= cobrancas.size(); i++) {
-                Cobranca cobranca = cobrancas.get(i);
-                cobrancasDTO.add(toDto(cobranca));
-            }
-            return cobrancasDTO;
-        } else if (status == 3) {
-            List<Cobranca> cobrancas = cobrancaRepository.findAllByStatusAndDevedor("CANCELADO", user.orElseThrow());
-            List<CobrancaDTO> cobrancasDTO = new ArrayList<>();
-            for (int i = 0; i <= cobrancas.size(); i++) {
-                Cobranca cobranca = cobrancas.get(i);
-                cobrancasDTO.add(toDto(cobranca));
-            }
-            return cobrancasDTO;
-        }
-        return new ArrayList<CobrancaDTO>();
+    public List<CobrancaDTO> findSend(String cpf, int statusId){
+        Optional<User> user = userRepository.findUserByCpf(cpf);
+        String status = getStatusById(statusId);
+        List<Cobranca> cobrancas = cobrancaRepository.findAllByStatusAndOriginador(status, user.orElseThrow());
+
+        return cobrancas.stream()
+                .map(this::toDto)
+                .collect(Collectors.toList());
     }
 
+    @Transactional
     public CobrancaDTO pagarCobrancaSaldo(Long idCobranca){
         Cobranca cobranca = cobrancaRepository.findById(idCobranca).orElseThrow();
-        User usuarioDevedor = userRepository.findUserByCPf(cobranca.getCpfDestiny()).orElseThrow();
-        User usuarioRecebedor = cobranca.getDevedor();
+        User usuarioDevedor = userRepository.findUserByCpf(cobranca.getCpfDestiny()).orElseThrow();
+        User usuarioRecebedor = cobranca.getOriginador();
             if (usuarioDevedor.getBalance().compareTo(cobranca.getValue()) >= 0) {
-                cobranca.setStatus("PAGO");
+                cobranca.setStatus(Cobranca.StatusCobranca.PAGA);
                 usuarioDevedor.setBalance(usuarioDevedor.getBalance().subtract(cobranca.getValue()));
                 usuarioRecebedor.setBalance(usuarioRecebedor.getBalance().add(cobranca.getValue()));
                 cobrancaRepository.save(cobranca);
@@ -116,14 +77,15 @@ public class CobrancaService {
             }
     }
 
+    @Transactional
     public CobrancaDTO pagarCobrancaCredito(Long idCobranca, Long numeroCartao, LocalDate dataExpiracao, int cvv){
         Cobranca cobranca = cobrancaRepository.findById(idCobranca).orElseThrow();
-        User usuarioRecebedor = cobranca.getDevedor();
+        User usuarioRecebedor = cobranca.getOriginador();
 
         if (dataExpiracao.isBefore(LocalDate.now())) throw new RuntimeException("Data de expiração anterior a data atual.");
 
         if(utilsService.autorizacao()) {
-            cobranca.setStatus("PAGO");
+            cobranca.setStatus(Cobranca.StatusCobranca.PAGA);
             usuarioRecebedor.setBalance(usuarioRecebedor.getBalance().add(cobranca.getValue()));
             cobrancaRepository.save(cobranca);
             userRepository.save(usuarioRecebedor);
@@ -136,7 +98,7 @@ public class CobrancaService {
     private CobrancaDTO toDto(Cobranca cobranca){
         CobrancaDTO cobrancaDTO = new CobrancaDTO();
         cobrancaDTO.setId(cobranca.getId());
-        cobrancaDTO.setIdOriginador(cobranca.getDevedor().getId());
+        cobrancaDTO.setIdOriginador(cobranca.getOriginador().getId());
         cobrancaDTO.setValue(cobranca.getValue());
         cobrancaDTO.setDescription(cobranca.getDescription());
         cobrancaDTO.setCpfDestiny(cobranca.getCpfDestiny());
@@ -146,11 +108,20 @@ public class CobrancaService {
     private Cobranca toEntity(CobrancaDTO cobrancaDTO, User user, String status){
         Cobranca cobranca = new Cobranca();
         cobranca.setId(cobrancaDTO.getId());
-        cobranca.setDevedor(user);
+        cobranca.setOriginador(user);
         cobranca.setValue(cobrancaDTO.getValue());
         cobranca.setDescription(cobrancaDTO.getDescription());
         cobranca.setCpfDestiny(cobrancaDTO.getCpfDestiny());
-        cobranca.setStatus(status);
+        cobranca.setStatus(Cobranca.StatusCobranca.valueOf(status));
         return cobranca;
+    }
+
+    private String getStatusById(int statusId) {
+        return switch (statusId) {
+            case 1 -> "PENDENTE";
+            case 2 -> "PAGO";
+            case 3 -> "CANCELADO";
+            default -> throw new IllegalArgumentException("Status ID inválido: " + statusId);
+        };
     }
 }

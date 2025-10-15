@@ -1,16 +1,18 @@
 package com.desafionimble.service;
 
+import com.desafionimble.model.dtos.AuthorizerResponseDTO;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
-import java.util.Map;
-import java.util.Objects;
 
 @Service
 public class UtilsService {
 
     private final RestTemplate restTemplate;
+
+    @Value("${external.authorizer.url}")
+    private String authorizerUrl;
 
     public UtilsService(
             RestTemplate restTemplate
@@ -18,8 +20,17 @@ public class UtilsService {
         this.restTemplate = restTemplate;
     }
 
-    public boolean autorizacao(){
-        ResponseEntity<Map> response = restTemplate.getForEntity("https://zsy6tx7aql.execute-api.sa-east-1.amazonaws.com/authorizer", Map.class);
-        return Objects.requireNonNull(response.getBody()).get("status") == "success";
+    public boolean autorizacao() {
+        try {
+            ResponseEntity<AuthorizerResponseDTO> response =
+                    restTemplate.getForEntity(authorizerUrl, AuthorizerResponseDTO.class);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return response.getBody().getData().isAuthorized();
+            }
+            return false;
+
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

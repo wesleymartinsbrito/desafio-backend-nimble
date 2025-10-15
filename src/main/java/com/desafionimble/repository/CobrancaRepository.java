@@ -8,5 +8,7 @@ import java.util.List;
 
 public interface CobrancaRepository extends JpaRepository<Cobranca, Long> {
     List<Cobranca> findAllByStatusAndCpfDestiny(String status, String cpfDestiny);
-    List<Cobranca> findAllByStatusAndDevedor(String status, User devedor);
+    List<Cobranca> findAllByStatusAndOriginador(String status, User originador);
+    List<Cobranca> findAllByCpfDestiny(String cpfDestiny);
+    List<Cobranca> findAllByOriginador(User originador);
 }

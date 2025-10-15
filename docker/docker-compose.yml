@@ -11,7 +11,7 @@ services:
       - MYSQL_DATABASE=dbnimble
       - MYSQL_ROOT_PASSWORD=123
     volumes:
-      - db_data:/bar/lib/mysql
+      - db_data:/var/lib/mysql
 
 volumes:
   db_data:

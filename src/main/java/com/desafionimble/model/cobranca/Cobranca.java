@@ -20,11 +20,12 @@ public class Cobranca {
     @Column(name = "description", nullable = true)
     private String description;
     @ManyToOne
-    @JoinColumn(name = "devedor_id")
-    private User devedor;
+    @JoinColumn(name = "originador_id")
+    private User originador;
     @Column(name = "created_date")
     private LocalDateTime createdDate;
-    private String status;
+    @Enumerated(EnumType.STRING)
+    private StatusCobranca status;
 
     public Long getId() {
         return id;
@@ -58,12 +59,12 @@ public class Cobranca {
         this.description = description;
     }
 
-    public User getDevedor() {
-        return devedor;
+    public User getOriginador() {
+        return originador;
     }
 
-    public void setDevedor(User devedor) {
-        this.devedor = devedor;
+    public void setOriginador(User originador) {
+        this.originador = originador;
     }
 
     public LocalDateTime getCreatedDate() {
@@ -74,11 +75,11 @@ public class Cobranca {
         this.createdDate = createdDate;
     }
 
-    public String getStatus() {
+    public StatusCobranca getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(StatusCobranca status) {
         this.status = status;
     }
 
@@ -87,12 +88,12 @@ public class Cobranca {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Cobranca cobranca = (Cobranca) o;
-        return Objects.equals(id, cobranca.id) && Objects.equals(cpfDestiny, cobranca.cpfDestiny) && Objects.equals(devedor, cobranca.devedor);
+        return Objects.equals(id, cobranca.id) && Objects.equals(cpfDestiny, cobranca.cpfDestiny) && Objects.equals(originador, cobranca.originador);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, cpfDestiny, devedor);
+        return Objects.hash(id, cpfDestiny, originador);
     }
 
     @Override
@@ -102,8 +103,14 @@ public class Cobranca {
                 ", cpfDestiny='" + cpfDestiny + '\'' +
                 ", value=" + value +
                 ", description='" + description + '\'' +
-                ", devedor=" + devedor +
+                ", originador=" + originador +
                 ", createdDate=" + createdDate +
                 '}';
+    }
+
+    public enum StatusCobranca {
+        PENDENTE,
+        PAGA,
+        CANCELADA
     }
 }
