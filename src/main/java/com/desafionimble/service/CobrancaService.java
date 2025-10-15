@@ -5,25 +5,30 @@ import com.desafionimble.model.cobranca.CobrancaDTO;
 import com.desafionimble.model.user.User;
 import com.desafionimble.repository.CobrancaRepository;
 import com.desafionimble.repository.UserRepository;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class CobrancaService {
 
     private final CobrancaRepository cobrancaRepository;
     private final UserRepository userRepository;
+    private final RestTemplate restTemplate;
 
     public CobrancaService(
             CobrancaRepository cobrancaRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            RestTemplate restTemplate
     ){
         this.cobrancaRepository = cobrancaRepository;
         this.userRepository = userRepository;
+        this.restTemplate = restTemplate;
     }
 
     public CobrancaDTO createCobranca(CobrancaDTO cobrancaDTO){
@@ -95,6 +100,40 @@ public class CobrancaService {
         return new ArrayList<CobrancaDTO>();
     }
 
+    public CobrancaDTO pagarCobrancaSaldo(Long idCobranca){
+        Cobranca cobranca = cobrancaRepository.findById(idCobranca).orElseThrow();
+        User usuarioDevedor = userRepository.findUserByCPf(cobranca.getCpfDestiny()).orElseThrow();
+        User usuarioRecebedor = cobranca.getDevedor();
+            if (usuarioDevedor.getBalance().compareTo(cobranca.getValue()) >= 0) {
+                cobranca.setStatus("PAGO");
+                usuarioDevedor.setBalance(usuarioDevedor.getBalance().subtract(cobranca.getValue()));
+                usuarioRecebedor.setBalance(usuarioRecebedor.getBalance().add(cobranca.getValue()));
+                cobrancaRepository.save(cobranca);
+                userRepository.save(usuarioDevedor);
+                userRepository.save(usuarioRecebedor);
+                return toDto(cobranca);
+            } else {
+                throw new RuntimeException("Saldo do usuário devedor é menor que o saldo devedor.");
+            }
+    }
+
+    public CobrancaDTO pagarCobrancaCredito(Long idCobranca, Long numeroCartao, LocalDate dataExpiracao, int cvv){
+        Cobranca cobranca = cobrancaRepository.findById(idCobranca).orElseThrow();
+        User usuarioRecebedor = cobranca.getDevedor();
+
+        if (dataExpiracao.isBefore(LocalDate.now())) throw new RuntimeException("Data de expiração anterior a data atual.");
+
+        if(autorizacao()) {
+            cobranca.setStatus("PAGO");
+            usuarioRecebedor.setBalance(usuarioRecebedor.getBalance().add(cobranca.getValue()));
+            cobrancaRepository.save(cobranca);
+            userRepository.save(usuarioRecebedor);
+            return toDto(cobranca);
+        } else {
+            throw new RuntimeException("Pagamento do saldo devedor com o cartão de crédito não autorizado.");
+        }
+    }
+
     private CobrancaDTO toDto(Cobranca cobranca){
         CobrancaDTO cobrancaDTO = new CobrancaDTO();
         cobrancaDTO.setId(cobranca.getId());
@@ -114,5 +153,10 @@ public class CobrancaService {
         cobranca.setCpfDestiny(cobrancaDTO.getCpfDestiny());
         cobranca.setStatus(status);
         return cobranca;
+    }
+
+    public boolean autorizacao(){
+        ResponseEntity<Map> response = restTemplate.getForEntity("https://zsy6tx7aql.execute-api.sa-east-1.amazonaws.com/authorizer", Map.class);
+        return Objects.requireNonNull(response.getBody()).get("status") == "success";
     }
 }
