@@ -5,10 +5,8 @@ import com.desafionimble.model.cobranca.CobrancaDTO;
 import com.desafionimble.model.user.User;
 import com.desafionimble.repository.CobrancaRepository;
 import com.desafionimble.repository.UserRepository;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -19,16 +17,17 @@ public class CobrancaService {
 
     private final CobrancaRepository cobrancaRepository;
     private final UserRepository userRepository;
-    private final RestTemplate restTemplate;
+    private final UtilsService utilsService;
+
 
     public CobrancaService(
             CobrancaRepository cobrancaRepository,
             UserRepository userRepository,
-            RestTemplate restTemplate
+            UtilsService utilsService
     ){
         this.cobrancaRepository = cobrancaRepository;
         this.userRepository = userRepository;
-        this.restTemplate = restTemplate;
+        this.utilsService = utilsService;
     }
 
     public CobrancaDTO createCobranca(CobrancaDTO cobrancaDTO){
@@ -123,7 +122,7 @@ public class CobrancaService {
 
         if (dataExpiracao.isBefore(LocalDate.now())) throw new RuntimeException("Data de expiração anterior a data atual.");
 
-        if(autorizacao()) {
+        if(utilsService.autorizacao()) {
             cobranca.setStatus("PAGO");
             usuarioRecebedor.setBalance(usuarioRecebedor.getBalance().add(cobranca.getValue()));
             cobrancaRepository.save(cobranca);
@@ -153,10 +152,5 @@ public class CobrancaService {
         cobranca.setCpfDestiny(cobrancaDTO.getCpfDestiny());
         cobranca.setStatus(status);
         return cobranca;
-    }
-
-    public boolean autorizacao(){
-        ResponseEntity<Map> response = restTemplate.getForEntity("https://zsy6tx7aql.execute-api.sa-east-1.amazonaws.com/authorizer", Map.class);
-        return Objects.requireNonNull(response.getBody()).get("status") == "success";
     }
 }
