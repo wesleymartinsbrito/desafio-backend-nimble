@@ -24,6 +24,7 @@ public class Cobranca {
     private User devedor;
     @Column(name = "created_date")
     private LocalDateTime createdDate;
+    private String status;
 
     public Long getId() {
         return id;
@@ -71,6 +72,14 @@ public class Cobranca {
 
     public void setCreatedDate(LocalDateTime createdDate) {
         this.createdDate = createdDate;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 
     @Override
