@@ -25,7 +25,11 @@ public class Cobranca {
     @Column(name = "created_date")
     private LocalDateTime createdDate;
     @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private StatusCobranca status;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "metodo_pagamento")
+    private MetodoPagamento metodoPagamento;
 
     public Long getId() {
         return id;
@@ -83,6 +87,14 @@ public class Cobranca {
         this.status = status;
     }
 
+    public MetodoPagamento getMetodoPagamento() {
+        return metodoPagamento;
+    }
+
+    public void setMetodoPagamento(MetodoPagamento metodoPagamento) {
+        this.metodoPagamento = metodoPagamento;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -112,5 +124,10 @@ public class Cobranca {
         PENDENTE,
         PAGA,
         CANCELADA
+    }
+
+    public enum MetodoPagamento {
+        SALDO,
+        CARTAO_DE_CREDITO
     }
 }

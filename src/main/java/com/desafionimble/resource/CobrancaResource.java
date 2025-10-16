@@ -53,4 +53,10 @@ public class CobrancaResource {
         CobrancaDTO cobrancaDTO = cobrancaService.pagarCobrancaSaldo(idCobranca);
         return new ResponseEntity<>(cobrancaDTO, HttpStatus.ACCEPTED);
     }
+
+    @PostMapping("/cancel/{idCobranca}")
+    public ResponseEntity<CobrancaDTO> cancelCobranca(@PathVariable Long idCobranca) {
+        CobrancaDTO cobrancaCancelada = cobrancaService.cancelarCobranca(idCobranca);
+        return new ResponseEntity<>(cobrancaCancelada, HttpStatus.OK);
+    }
 }

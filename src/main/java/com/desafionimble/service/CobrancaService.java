@@ -8,6 +8,7 @@ import com.desafionimble.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
@@ -66,6 +67,7 @@ public class CobrancaService {
         User usuarioRecebedor = cobranca.getOriginador();
             if (usuarioDevedor.getBalance().compareTo(cobranca.getValue()) >= 0) {
                 cobranca.setStatus(Cobranca.StatusCobranca.PAGA);
+                cobranca.setMetodoPagamento(Cobranca.MetodoPagamento.SALDO);
                 usuarioDevedor.setBalance(usuarioDevedor.getBalance().subtract(cobranca.getValue()));
                 usuarioRecebedor.setBalance(usuarioRecebedor.getBalance().add(cobranca.getValue()));
                 cobrancaRepository.save(cobranca);
@@ -86,12 +88,73 @@ public class CobrancaService {
 
         if(utilsService.autorizacao()) {
             cobranca.setStatus(Cobranca.StatusCobranca.PAGA);
+            cobranca.setMetodoPagamento(Cobranca.MetodoPagamento.CARTAO_DE_CREDITO);
             usuarioRecebedor.setBalance(usuarioRecebedor.getBalance().add(cobranca.getValue()));
             cobrancaRepository.save(cobranca);
             userRepository.save(usuarioRecebedor);
             return toDto(cobranca);
         } else {
             throw new RuntimeException("Pagamento do saldo devedor com o cartão de crédito não autorizado.");
+        }
+    }
+
+    @Transactional
+    public CobrancaDTO cancelarCobranca(Long idCobranca) {
+        Cobranca cobranca = cobrancaRepository.findById(idCobranca)
+                .orElseThrow(() -> new RuntimeException("Cobrança não encontrada."));
+
+        switch (cobranca.getStatus()) {
+            case PENDENTE:
+                return cancelarCobrancaPendente(cobranca);
+
+            case PAGA:
+                if (cobranca.getMetodoPagamento() == Cobranca.MetodoPagamento.SALDO) {
+                    return cancelarCobrancaPagaComSaldo(cobranca);
+                } else if (cobranca.getMetodoPagamento() == Cobranca.MetodoPagamento.CARTAO_DE_CREDITO) {
+                    return cancelarCobrancaPagaComCartao(cobranca);
+                } else {
+                    throw new IllegalStateException("Cobrança paga sem método de pagamento definido.");
+                }
+
+            case CANCELADA:
+                throw new IllegalStateException("Esta cobrança já está cancelada.");
+
+            default:
+                throw new IllegalStateException("Status da cobrança desconhecido.");
+        }
+    }
+
+    private CobrancaDTO cancelarCobrancaPendente(Cobranca cobranca) {
+        cobranca.setStatus(Cobranca.StatusCobranca.CANCELADA);
+        cobrancaRepository.save(cobranca);
+        return toDto(cobranca);
+    }
+
+    private CobrancaDTO cancelarCobrancaPagaComSaldo(Cobranca cobranca) {
+        User pagador = userRepository.findUserByCpf(cobranca.getCpfDestiny())
+                .orElseThrow(() -> new RuntimeException("Usuário pagador não encontrado."));
+        User recebedor = cobranca.getOriginador();
+        BigDecimal valor = cobranca.getValue();
+
+        pagador.setBalance(pagador.getBalance().add(valor));
+        recebedor.setBalance(recebedor.getBalance().subtract(valor));
+
+        cobranca.setStatus(Cobranca.StatusCobranca.CANCELADA);
+
+        userRepository.save(pagador);
+        userRepository.save(recebedor);
+        cobrancaRepository.save(cobranca);
+
+        return toDto(cobranca);
+    }
+
+    private CobrancaDTO cancelarCobrancaPagaComCartao(Cobranca cobranca) {
+        if (utilsService.autorizacao()) {
+            cobranca.setStatus(Cobranca.StatusCobranca.CANCELADA);
+            cobrancaRepository.save(cobranca);
+            return toDto(cobranca);
+        } else {
+            throw new RuntimeException("Cancelamento não autorizado pelo serviço externo.");
         }
     }
 
