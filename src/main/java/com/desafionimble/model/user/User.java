@@ -1,6 +1,8 @@
 package com.desafionimble.model.user;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
@@ -14,14 +16,17 @@ public class User implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Size(min = 3)
     @Column(name = "name", nullable = false)
     private String name;
     @Column(name = "cpf", nullable = false, unique = true, updatable = false)
     private String cpf;
+    @Size(min = 8)
     @Column(name = "email", nullable = false, unique = true)
     private String email;
     @Column(name = "password", length = 60, nullable = false)
     private String password;
+    @PositiveOrZero(message = "O saldo deve ser maior ou igual a zero")
     @Column(name = "balance", nullable = false)
     private BigDecimal balance;
 

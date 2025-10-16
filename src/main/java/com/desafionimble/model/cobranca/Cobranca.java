@@ -2,6 +2,7 @@ package com.desafionimble.model.cobranca;
 
 import com.desafionimble.model.user.User;
 import jakarta.persistence.*;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -15,6 +16,7 @@ public class Cobranca {
     private Long id;
     @Column(name = "cpf_destiny", nullable = false)
     private String cpfDestiny;
+    @PositiveOrZero(message = "O valor de cobrança deve ser maior ou igual a zero")
     @Column(name = "value", nullable = false)
     private BigDecimal value;
     @Column(name = "description", nullable = true)
