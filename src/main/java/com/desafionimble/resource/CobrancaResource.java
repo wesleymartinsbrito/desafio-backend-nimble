@@ -62,7 +62,7 @@ public class CobrancaResource {
             @ApiResponse(responseCode = "400", description = "Pagamento negado pelo autorizador"),
             @ApiResponse(responseCode = "404", description = "Cobrança não encontrada", content = @Content)
     })
-    @PostMapping("/payment/cartao/{idCobranca}")
+    @PutMapping("/payment/cartao/{idCobranca}")
     public ResponseEntity<CobrancaDTO> payCobrancaCartao(@PathVariable Long idCobranca, @RequestBody CartaoDTO pagamentoDTO){
         CobrancaDTO cobrancaDTO = cobrancaService.pagarCobrancaCredito(idCobranca, pagamentoDTO.getNumeroCartao(), pagamentoDTO.getDataExpiracao(), pagamentoDTO.getCvv());
         return new ResponseEntity<>(cobrancaDTO, HttpStatus.ACCEPTED);
@@ -73,14 +73,14 @@ public class CobrancaResource {
             @ApiResponse(responseCode = "202", description = "Pagamento aceito e processado"),
             @ApiResponse(responseCode = "404", description = "Cobrança não encontrada", content = @Content)
     })
-    @PostMapping("/payment/saldo/{idCobranca}")
+    @PutMapping("/payment/saldo/{idCobranca}")
     public ResponseEntity<CobrancaDTO> payCobrancaSaldo(@Parameter(description = "ID da cobrança a ser paga", required = true, example = "1") @PathVariable Long idCobranca){
         CobrancaDTO cobrancaDTO = cobrancaService.pagarCobrancaSaldo(idCobranca);
         return new ResponseEntity<>(cobrancaDTO, HttpStatus.ACCEPTED);
     }
 
     @Operation(summary = "Cancelar cobranca", description = "Efetua o cancelamento de uma cobrança.")
-    @PostMapping("/cancel/{idCobranca}")
+    @PutMapping("/cancel/{idCobranca}")
     public ResponseEntity<CobrancaDTO> cancelCobranca(@Parameter(description = "ID da cobrança a ser cancelada", required = true, example = "1") @PathVariable Long idCobranca) {
         CobrancaDTO cobrancaCancelada = cobrancaService.cancelarCobranca(idCobranca);
         return new ResponseEntity<>(cobrancaCancelada, HttpStatus.OK);
