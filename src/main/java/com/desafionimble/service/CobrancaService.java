@@ -41,8 +41,8 @@ public class CobrancaService {
     }
 
     public List<CobrancaDTO> findReceive(String cpf, int statusId){
-        String status = getStatusById(statusId);
-        List<Cobranca> cobrancas = cobrancaRepository.findAllByStatusAndCpfDestiny(status, cpf);
+        Cobranca.StatusCobranca statusEnum = getStatusEnumById(statusId);
+        List<Cobranca> cobrancas = cobrancaRepository.findAllByStatusAndCpfDestiny(statusEnum, cpf);
 
         return cobrancas.stream()
                 .map(this::toDto)
@@ -51,8 +51,8 @@ public class CobrancaService {
 
     public List<CobrancaDTO> findSend(String cpf, int statusId){
         Optional<User> user = userRepository.findUserByCpf(cpf);
-        String status = getStatusById(statusId);
-        List<Cobranca> cobrancas = cobrancaRepository.findAllByStatusAndOriginador(status, user.orElseThrow());
+        Cobranca.StatusCobranca statusEnum = getStatusEnumById(statusId);
+        List<Cobranca> cobrancas = cobrancaRepository.findAllByStatusAndOriginador(statusEnum, user.orElseThrow());
 
         return cobrancas.stream()
                 .map(this::toDto)
@@ -116,11 +116,11 @@ public class CobrancaService {
         return cobranca;
     }
 
-    private String getStatusById(int statusId) {
+    private Cobranca.StatusCobranca getStatusEnumById(int statusId) {
         return switch (statusId) {
-            case 1 -> "PENDENTE";
-            case 2 -> "PAGO";
-            case 3 -> "CANCELADO";
+            case 1 -> Cobranca.StatusCobranca.PENDENTE;
+            case 2 -> Cobranca.StatusCobranca.PAGA;
+            case 3 -> Cobranca.StatusCobranca.CANCELADA;
             default -> throw new IllegalArgumentException("Status ID inválido: " + statusId);
         };
     }
